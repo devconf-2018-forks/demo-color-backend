@@ -1,0 +1,24 @@
+{
+  "name": "demo-color-backend",
+  "version": "1.0.0",
+  "description": "Return color based on hostname",
+  "main": "server.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "node server.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/prgcont/demo-color-backend.git"
+  },
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/prgcont/demo-color-backend/issues"
+  },
+  "homepage": "https://github.com/prgcont/demo-color-backend#readme",
+  "dependencies": {
+    "express":"*"
+  }
+}
+
