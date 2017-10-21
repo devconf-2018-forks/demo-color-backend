@@ -1,0 +1,89 @@
+kind: Template
+apiVersion: v1
+metadata:
+  name: demo-color-backend-pipeline
+objects:
+- apiVersion: v1
+  kind: BuildConfig
+  metadata:
+    labels:
+      app: demo-color-backend
+    name: demo-color-backend
+  spec:
+    output:
+      to:
+        kind: ImageStreamTag
+        name: demo-color-backend:latest
+    source:
+      git:
+        uri: https://github.com/prgcont/demo-color-backend
+      type: Git
+    strategy:
+      sourceStrategy:
+        from:
+          kind: ImageStreamTag
+          name: nodejs-6-centos7:latest
+      type: Source
+- apiVersion: v1
+  kind: ImageStream
+  metadata:
+    labels:
+      app: demo-color-backend
+    name: demo-color-backend
+  spec:
+    tags:
+    - name: latest
+- kind: BuildConfig
+  apiVersion: v1
+  metadata:
+    name: demo-color-backend-pipeline
+    labels:
+      name: demo-color-backend-pipeline
+  spec:
+    triggers:
+    - type: GitHub
+      github:
+        secret: secret101
+    - type: Generic
+      generic:
+        secret: secret101
+    - type: ConfigChange
+    strategy:
+      type: JenkinsPipeline
+      jenkinsPipelineStrategy:
+        jenkinsfile: | 
+          def appName=""
+          def project=""
+          def tag="blue"
+          def altTag="green"
+          def verbose="true"
+          node ('master') {
+            stage('Initialize') {
+              appName=sh(script:'echo $JOB_BASE_NAME | sed "s/[^-]*-\\(.*\\)-[^-]*/\\1/"', returnStdout: true).trim()
+              project=env.PROJECT_NAME
+
+              active=sh(script: "oc get route ${appName} -n ${project} -o jsonpath='{ .spec.to.name }' | sed 's/.*-\\([^-]*\\)/\\1/'", returnStdout: true).trim()
+              if (active == tag) {
+                tag = altTag
+                altTag = active
+              }
+            }
+
+            stage('Build') {
+              openshiftBuild(buildConfig: appName, showBuildLogs: "true")
+            }
+
+            stage('Deploy') {
+              openshiftTag(sourceStream: appName, sourceTag: 'latest', destinationStream: appName, destinationTag: tag)
+              openshiftVerifyDeployment(deploymentConfig: "${appName}-${tag}")
+            }
+
+            stage('Verify') {
+              def activeRoute = sh(script: "oc get route ${appName}-${tag} -n ${project} -o jsonpath='{ .spec.host }'", returnStdout: true).trim()
+              input message: "Test deployment: http://${activeRoute}. Approve?", id: "approval"
+            }
+
+            stage 'Promote'
+            sh "oc set -n ${project} route-backends ${appName} ${appName}-${tag}=100 ${appName}-${altTag}=0"
+
+          }
