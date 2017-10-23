@@ -33,6 +33,22 @@ objects:
   spec:
     tags:
     - name: latest
+- apiVersion: v1
+  kind: ImageStream
+  metadata:
+    labels:
+      app: demo-color-backend
+    name: nodejs-6-centos7
+  spec:
+    tags:
+    - annotations:
+        openshift.io/imported-from: centos/nodejs-6-centos7
+      from:
+        kind: DockerImage
+        name: centos/nodejs-6-centos7
+      name: latest
+      referencePolicy:
+        type: Source
 - kind: BuildConfig
   apiVersion: v1
   metadata:
